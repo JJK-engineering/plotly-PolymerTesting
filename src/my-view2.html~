@@ -1,0 +1,217 @@
+<!-- my-view2.html  Polymer Example of Profile and Results-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="shared-styles.html">
+<link rel="import" href="../bower_components/plotly-plot/plotly-plot.html">  <!-- required -->
+<link rel="import" href="./my-plot.html">
+
+<dom-module id="my-view2">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+
+        padding: 10px;
+      }
+    </style>
+
+    <div class="card">
+	<h1>plotly charting testing</h1>
+	<div id="profile">
+	    <my-plot layout="{{layout2}}" data="{{data2}}"> 
+	    </my-plot>
+	    <!--test data binding to array item (index selects trace), works-->
+	    <!-- <div>[[arrayItem(data2.*, 1, 'y')]]</div>  
+	    <!-- <template is="dom-repeat" items="{{arrayItem(data2.*, 1, 'x')}}" data="{{data2}}">
+		x: <input type="number" style="width:15mm" value="{{item::input}}">
+	    </template><br> -->
+	    <template is="dom-repeat" items="{{arrayItem(data2.*, 1, 'y')}}" data="{{data2}}">
+		y: <input type="number" style="width:15mm" value="{{item::input}}">
+		<!-- paper-input works but style needs considerable tuning -->
+		<!-- <paper-input type="number" label="y" max=4 style="width:10mm"
+		                        value="{{item}}" on-value-changed="onInput"></paper-input> -->
+	    </template>alignment
+	    <!-- test layout input, works -->
+            <!-- <input value="{{layout2.title::input}}" layout="{{layout2}}">  <!--non-Polymer component--> 
+	    <!-- <paper-input label="test" value="{{layout2.title}}" layout="{{layout2}}"></paper-input> -->
+	</div>
+
+	<div id="results">
+	    <my-plot layout="{{layout}}" data="{{data}}">
+	    </my-plot>
+	    <template></template>                     <!--   new y (=cover) is a string value ??   ToDo JK -->
+	    <div><paper-icon-button icon="check-box" on-tap="recomputeRockcover">
+	    </paper-icon-button>calculate</div>
+	</div>
+
+	<div>
+	    <!-- test providing plotly data as attributes, works -->
+	    <!-- <my-plot
+		layout='{"title": "just more testing", "height": 300, "width":800}'
+		data='[{"x": [1, 2, 3], "y": [2, 15, 30]}]',
+	    </my-plot> -->
+	</div>
+    </div>
+  </template>
+  
+  <script>
+    class MyView2 extends Polymer.Element {
+	static get is() { return 'my-view2'}
+
+	static get properties() {
+	    return {
+		layout2: {
+		    type: Object,
+		    notify: true,
+		    value: {
+			title: 'Profile',
+			height: 300,
+			width: 800,
+			autosize: true,
+			margin: {
+			    l: 50,
+			    r: 100,
+			    b: 20,
+			    t: 80,
+			    pad: 0
+			}
+		    }
+		},
+		layout: {
+		    type: Object,
+		    notify: true,
+		    value: {
+			title: 'Results',
+			height: 200,
+			width: 800,
+			autosize: true,
+			margin: {
+			    l: 50,
+			    r: 100,
+			    b: 20,
+			    t: 80,
+			    pad: 0
+			},
+			showlegend: true
+		    }
+		},
+		trace3: {
+		    value: {
+			x: chainage,
+			y: terrainElev,
+			name: 'terrain',
+			type: 'scatter',
+			mode: 'lines',
+			line: {color: 'burlywood'},			
+			fill: 'tozeroy',
+			fillcolor:'burlywood',			
+		    },
+		    type: Object,
+		    notify: true		    
+		},
+		trace4: {
+		    value: {
+			x: chainage,			
+			y: alignmentElev,
+			name: 'alignment',
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: {color: 'red'}
+		    },
+		    type: Object,
+		    //observer: 'recomputeRockcover',  //does not observe sub-properties	    
+		    notify: true		    
+		},
+		trace6: {
+		    computed: 'computeRockcover(trace3,trace4)',  
+		    type: Object,
+		    notify: true
+		},
+		data: {                                   //results
+		    computed: 'computeResults(trace6)',
+		    type: Array,
+		    notify: true
+		},
+		data2: {                                  //profile
+		    computed: 'computeProfile(trace3,trace4)',
+		    type: Array,
+		    notify: true
+		},
+	    }
+	}
+
+	 static get observers() {
+	     return [
+		 'recomputeRockcover(trace4.y)',  //observers for sub-properties, array changes not observed
+	     ]
+	 }
+	
+	// change is change record for the array change,
+	// change.base is the array specified in the binding
+	arrayItem(change, index, path) {                  //called for data binding to array 
+	    // return a value for path relative to root object
+	    return this.get(path, change.base[index]);
+	    }
+
+	computeProfile(trace1, trace2) {                  //called to compute data2
+	    console.log('computeProfile');
+	    return [trace1, trace2];
+	}
+
+	computeResults(trace1) {                          //called to compute data
+	    console.log('computeResults');
+	    return [trace1];
+	}
+
+	computeRockcover(terrain, alignment) {            //called to compute trace6 (rockcover)
+	    var rockcover = {
+		x: chainage,
+		y: terrain.y.map((a, i) => a - alignment.y[i]), //rockcover
+		name: 'rockcover',
+		type: 'scatter',
+		mode: 'lines+markers',
+		line: {color: 'blue'}
+	    };
+	    console.log('compute Rockcover');
+	    return rockcover;
+	}
+	
+	recomputeRockcover() {                            //called by button on-tap to recalculate rock cover
+	    console.log('recomputeRockcover');
+	    var rockcover=this.trace3.y.map((a, i) => a - this.trace4.y[i]);  //[trace3]-[trace4]
+	    console.log('rockcover '+rockcover);
+	    var len=this.trace6.y.length;
+	    for (var i = 0, len = this.trace6.y.length; i < len; ++i) {  //replace y with rockcover
+	    	        this.shift('trace6.y');  //removes last array item
+	    	        this.push('trace6.y',rockcover[i])};  //add item i from rcockcover to front of array
+	    //console.log(this.trace4);
+	    //console.log(this.trace6);
+	    //console.log(this.data);
+	    return this.data;
+	}
+	
+	onInput() {                                       //called by valued-changed in paper-input
+	    console.log('onInput');                       //on-value-changed works, testing notifyPath
+	    this.notifyPath('this.data2[1].y');           //n.g. due to non-observable changes in array  
+	    //Plotly.newPlot(this.$.profile,this.data2,this.layout2);  //produces a new plot
+	                                                               //and Plotly.update use diff data structure
+	}
+
+	ready() {
+	    super.ready();
+	    //console.log(this.data);
+	    //console.log(this.data2[1].y[1]);
+	}
+    }
+
+   //alignment input data
+   var chainage=[100,1100, 2000, 3000, 3900];
+   var terrainElev=[250,300, 250,270, 200];
+   var alignmentElev=[175,170, 165, 160, 100];
+
+   window.customElements.define(MyView2.is, MyView2);
+  </script>
+</dom-module>
